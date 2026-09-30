@@ -216,6 +216,12 @@ const promptSuggestions = [
     tool: "agent",
     prompt: "Check transaction {transactionId}.",
     description: "Replace {transactionId} with a transaction ID such as 12345."
+  },
+  {
+    category: "Templates",
+    tool: "agent",
+    prompt: "Check transaction {transactionId}.",
+    description: "Replace {transactionId} with a transaction ID such as 12345."
   }
 ];
 
