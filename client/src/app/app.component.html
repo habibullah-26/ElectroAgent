@@ -1,0 +1,82 @@
+<div class="container">
+
+  <div class="card">
+
+    <h1>🤖 AI Assistant</h1>
+
+    <p class="subtitle">
+      Angular + Node.js + OpenAI
+    </p>
+
+    <div class="form-group">
+
+      <label>
+        Ask your question
+      </label>
+
+      <textarea
+        [(ngModel)]="message"
+        placeholder="For example: Explain dependency injection in Spring Boot..."
+        rows="6">
+      </textarea>
+
+    </div>
+
+    <div class="buttons">
+
+      <button
+        class="ask-button"
+        (click)="askAI()"
+        [disabled]="loading || !message.trim()">
+
+        <span *ngIf="!loading">
+          Ask AI
+        </span>
+
+        <span *ngIf="loading">
+          Thinking...
+        </span>
+
+      </button>
+
+      <button
+        class="clear-button"
+        (click)="clear()">
+
+        Clear
+
+      </button>
+
+    </div>
+
+    <div
+      class="loading"
+      *ngIf="loading">
+
+      AI is generating a response...
+
+    </div>
+
+    <div
+      class="error"
+      *ngIf="error">
+
+      {{ error }}
+
+    </div>
+
+    <div
+      class="answer"
+      *ngIf="answer">
+
+      <h2>AI Response</h2>
+
+      <div class="ai-response">
+        <markdown [data]="answer"></markdown>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
