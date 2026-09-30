@@ -1,0 +1,5 @@
+[
+  { "id": 1, "name": "Shipped" },
+  { "id": 2, "name": "Delivered" },
+  { "id": 3, "name": "Processing" }
+]
