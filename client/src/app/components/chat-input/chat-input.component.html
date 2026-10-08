@@ -1,0 +1,12 @@
+<div class="input-bar">
+  <div class="input-box">
+    <textarea
+      [(ngModel)]="message"
+      (keydown)="onKey($event)"
+      placeholder="Message Elector AI Assistant..."
+      rows="1"></textarea>
+    <button (click)="submit()" [disabled]="disabled || !message.trim()" title="Send">
+      <svg class="ic" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+    </button>
+  </div>
+</div>

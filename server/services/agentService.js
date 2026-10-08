@@ -1,6 +1,9 @@
 const llmService =
     require("../services/llmService");
-
+const {
+    searchKnowledge
+} =
+    require("../services/ragService");
 
 const {
     getUser,
@@ -360,7 +363,7 @@ async function runAgent(
 
     const systemInstruction = `
 
-You are a helpful AI assistant.
+You are a helpful AI assistant for Electro Store.
 
 You have access to tools for retrieving:
 
@@ -369,23 +372,40 @@ You have access to tools for retrieving:
 - products
 - transaction information
 
-Use tools whenever application data is required.
+You also have access to the Electro Store
+knowledge base.
+
+Use application tools for live application data.
+
+Use the provided knowledge context for:
+
+- store policies
+- returns
+- refunds
+- warranties
+- shipping
+- delivery
+- customer support
+- general store information
 
 Never invent application data.
 
-If the user asks for application data,
-use the appropriate tool.
+Never invent store policies.
 
-You may call multiple tools if necessary.
+If knowledge context is provided, use it as
+the source of truth for store-policy questions.
 
-After receiving a tool result,
-decide whether another tool is required.
+If the required information is not present,
+clearly say that the information is not available.
+
+You may call multiple application tools if
+necessary.
+
+After receiving tool results, decide whether
+another tool is required.
 
 When all required information is available,
 provide a clear natural-language answer.
-
-Do not repeatedly call the same tool
-with the same arguments unless necessary.
 
 `;
 

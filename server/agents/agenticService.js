@@ -3,6 +3,11 @@ const llmService =
 
 
 const {
+    searchKnowledge
+} = require("../services/ragService");
+
+
+const {
     getUser,
     searchUsers,
     getUserTransactions,
@@ -43,10 +48,17 @@ const MAX_ITERATIONS = 5;
 
 
 // ==================================================
+// RAG configuration
+// ==================================================
+
+const RAG_TOP_K = 3;
+
+
+// ==================================================
 // Execute application tools
 // ==================================================
 
-function executeTool(
+async function executeTool(
     functionName,
     args
 ) {
@@ -68,9 +80,8 @@ function executeTool(
 
     switch (functionName) {
 
-
         // ------------------------------------------
-        // Get User
+        // User
         // ------------------------------------------
 
         case "getUser":
@@ -79,17 +90,20 @@ function executeTool(
                 args?.userId
             );
 
+
         case "searchUsers":
 
             return searchUsers(
                 args?.query
             );
 
+
         case "getUserTransactions":
 
             return getUserTransactions(
                 args?.userId
             );
+
 
         case "getUserByName":
 
@@ -99,7 +113,7 @@ function executeTool(
 
 
         // ------------------------------------------
-        // Get Order
+        // Orders
         // ------------------------------------------
 
         case "getOrder":
@@ -108,17 +122,20 @@ function executeTool(
                 args?.orderId
             );
 
+
         case "getOrdersByCustomer":
 
             return getOrdersByCustomer(
                 args?.customerId
             );
 
+
         case "getOrdersByStatus":
 
             return getOrdersByStatus(
                 args?.status
             );
+
 
         case "getCustomerOrdersByStatus":
 
@@ -127,11 +144,13 @@ function executeTool(
                 args?.status
             );
 
+
         case "getRecentOrders":
 
             return getRecentOrders(
                 args?.limit
             );
+
 
         case "searchOrders":
 
@@ -141,7 +160,7 @@ function executeTool(
 
 
         // ------------------------------------------
-        // Get Product
+        // Products
         // ------------------------------------------
 
         case "getProduct":
@@ -150,17 +169,20 @@ function executeTool(
                 args?.productId
             );
 
+
         case "searchProducts":
 
             return searchProducts(
                 args?.query
             );
 
+
         case "getProductsByCategory":
 
             return getProductsByCategory(
                 args?.category
             );
+
 
         case "getProductsByPrice":
 
@@ -169,9 +191,11 @@ function executeTool(
                 args?.maxPrice
             );
 
+
         case "getProductList":
 
             return getProductList();
+
 
         case "getProductByName":
 
@@ -181,7 +205,7 @@ function executeTool(
 
 
         // ------------------------------------------
-        // Get Transaction Status
+        // Transactions
         // ------------------------------------------
 
         case "getTransactionStatus":
@@ -189,10 +213,15 @@ function executeTool(
             return getTransactionStatus(
                 args?.transactionId
             );
-
+        
+        case "searchKnowledge":
+            return await searchKnowledge(
+                args?.query,
+                3
+            );
 
         // ------------------------------------------
-        // Unknown tool
+        // Unknown
         // ------------------------------------------
 
         default:
@@ -213,20 +242,6 @@ function executeTool(
 
 // ==================================================
 // Normalize tool call
-// ==================================================
-//
-// Gemini and Ollama can return tool calls
-// in different formats.
-//
-// We convert them into:
-//
-// {
-//     name: "getUser",
-//     args: {
-//         userId: "101"
-//     }
-// }
-//
 // ==================================================
 
 function normalizeFunctionCall(
@@ -262,7 +277,7 @@ function normalizeFunctionCall(
 
 
     // ------------------------------------------
-    // Ollama format
+    // Ollama / Llama format
     // ------------------------------------------
 
     if (
@@ -276,9 +291,6 @@ function normalizeFunctionCall(
         let args =
             fn.arguments || {};
 
-
-        // Some models may return arguments
-        // as JSON string.
 
         if (
             typeof args === "string"
@@ -321,6 +333,115 @@ function normalizeFunctionCall(
 
 
 // ==================================================
+// Determine whether RAG should be used
+// ==================================================
+
+function shouldSearchKnowledge(
+    message
+) {
+
+    const keywords = [
+
+        "return",
+        "refund",
+        "warranty",
+        "shipping",
+        "delivery",
+        "support",
+        "policy",
+        "store",
+        "company",
+        "working hours",
+        "business hours"
+
+    ];
+
+
+    const text =
+        message.toLowerCase();
+
+
+    return keywords.some(
+        keyword =>
+            text.includes(keyword)
+    );
+
+}
+
+
+// ==================================================
+// Search RAG Knowledge
+// ==================================================
+
+async function getKnowledgeContext(
+    question
+) {
+
+    console.log(
+        "\n================================="
+    );
+
+    console.log(
+        "Searching RAG Knowledge"
+    );
+
+    console.log(
+        "================================="
+    );
+
+
+    const results =
+        await searchKnowledge(
+            question,
+            RAG_TOP_K
+        );
+
+
+    if (
+        !results ||
+        results.length === 0
+    ) {
+
+        console.log(
+            "No RAG results found."
+        );
+
+        return "";
+
+    }
+
+
+    console.log(
+        "\nRAG Results:"
+    );
+
+
+    results.forEach(
+        result => {
+
+            console.log(
+                `Chunk ${result.id} - Score: ${result.score.toFixed(3)}`
+            );
+
+            console.log(
+                result.text
+            );
+
+        }
+    );
+
+
+    return results
+        .map(
+            result =>
+                result.text
+        )
+        .join("\n\n");
+
+}
+
+
+// ==================================================
 // Run Agent
 // ==================================================
 
@@ -328,9 +449,43 @@ async function runAgent(
     message
 ) {
 
-    // ------------------------------------------
+    // ==================================================
+    // RAG
+    // ==================================================
+
+    // let knowledgeContext = "";
+
+
+    // if (
+    //     shouldSearchKnowledge(
+    //         message
+    //     )
+    // ) {
+
+    //     try {
+
+    //         knowledgeContext =
+    //             await getKnowledgeContext(
+    //                 message
+    //             );
+
+    //     } catch (error) {
+
+    //         console.error(
+    //             "RAG search failed:",
+    //             error
+    //         );
+
+    //         knowledgeContext = "";
+
+    //     }
+
+    // }
+
+
+    // ==================================================
     // Initial conversation
-    // ------------------------------------------
+    // ==================================================
 
     let contents = [
 
@@ -354,52 +509,130 @@ async function runAgent(
     ];
 
 
-    // ------------------------------------------
+    // ==================================================
+    // Add RAG context
+    // ==================================================
+
+//     if (
+//         knowledgeContext
+//     ) {
+
+//         contents.push({
+
+//             role: "user",
+
+//             parts: [
+
+//                 {
+
+//                     text:
+//                         `
+// Relevant information from the
+// ElectroAgent knowledge base:
+
+// ${knowledgeContext}
+
+// Use this information when answering
+// the user's question.
+
+// IMPORTANT:
+// Do not invent information that is not
+// present in the provided knowledge.
+// `
+
+//                 }
+
+//             ]
+
+//         });
+
+//     }
+
+
+    // ==================================================
     // System instruction
-    // ------------------------------------------
+    // ==================================================
 
-    const systemInstruction = `
+   const systemInstruction = `
 
-You are a helpful AI assistant.
+You are ElectroAgent, an AI assistant
+for an electronics store.
 
-You have access to tools for retrieving:
+You have access to several tools.
+
+APPLICATION TOOLS:
 
 - users
 - orders
 - products
-- transaction information
+- transactions
 
-Use tools whenever application data is required.
+KNOWLEDGE BASE TOOL:
 
-Never invent application data.
+- searchKnowledge
 
-If the user asks for application data,
-use the appropriate tool.
+The searchKnowledge tool searches the
+ElectroAgent knowledge base for general
+store information such as:
 
-You may call multiple tools if necessary.
+- return policy
+- refund policy
+- warranty
+- shipping
+- delivery
+- customer support
+- store policies
+- general company information
 
-After receiving a tool result,
-decide whether another tool is required.
+IMPORTANT RULES:
 
-When all required information is available,
-provide a clear natural-language answer.
+1. Never invent application data.
 
-Do not repeatedly call the same tool
-with the same arguments unless necessary.
+2. Never invent store policies.
+
+3. Use application tools when the user
+   asks about live users, orders,
+   products or transactions.
+
+4. Use searchKnowledge when the user asks
+   about store policies, warranties,
+   returns, refunds, shipping, delivery,
+   support, or general store information.
+
+5. If the knowledge base does not contain
+   the requested information, clearly say
+   that the information is not available.
+
+6. You may use multiple tools when necessary.
+
+7. If a question requires both application
+   data and knowledge-base information,
+   use both tools.
+
+8. After receiving tool results, determine
+   whether another tool is required.
+
+9. Do not repeatedly call the same tool
+   with the same arguments.
+
+10. Never fabricate tool results.
+
+11. Give the final answer in clear,
+    natural language.
 
 `;
 
 
-    // ------------------------------------------
-    // Track tools used
-    // ------------------------------------------
+    // ==================================================
+    // Track tools
+    // ==================================================
 
     const toolsUsed = [];
 
 
-    // ------------------------------------------
+    // ==================================================
     // Agent loop
-    // ------------------------------------------
+    // ==================================================
 
     for (
         let iteration = 1;
@@ -412,15 +645,15 @@ with the same arguments unless necessary.
         );
 
 
-        // --------------------------------------
-        // Ask LLM
-        // --------------------------------------
-
         console.log(
             "Sending request to:",
             llmService.getProvider()
         );
 
+
+        // ------------------------------------------
+        // Ask LLM
+        // ------------------------------------------
 
         const response =
             await llmService.generate({
@@ -431,9 +664,10 @@ with the same arguments unless necessary.
 
             });
 
-        // --------------------------------------
+
+        // ------------------------------------------
         // Get tool calls
-        // --------------------------------------
+        // ------------------------------------------
 
         const functionCalls =
             response.functionCalls || [];
@@ -445,9 +679,9 @@ with the same arguments unless necessary.
         );
 
 
-        // --------------------------------------
+        // ------------------------------------------
         // No tool required
-        // --------------------------------------
+        // ------------------------------------------
 
         if (
             functionCalls.length === 0
@@ -479,18 +713,16 @@ with the same arguments unless necessary.
         }
 
 
-        // --------------------------------------
+        // ------------------------------------------
         // Process model response
-        // --------------------------------------
+        // ------------------------------------------
 
         /*
-         * IMPORTANT:
+         * Gemini may return candidateContent.
          *
-         * Gemini and Ollama represent the
-         * assistant/tool messages differently.
-         *
-         * The provider service should return
-         * candidateContent when possible.
+         * Llama/Ollama currently returns tool
+         * calls separately, so candidateContent
+         * may not exist.
          */
 
         if (
@@ -504,9 +736,9 @@ with the same arguments unless necessary.
         }
 
 
-        // --------------------------------------
-        // Execute every requested tool
-        // --------------------------------------
+        // ------------------------------------------
+        // Execute requested tools
+        // ------------------------------------------
 
         const toolResults = [];
 
@@ -522,9 +754,9 @@ with the same arguments unless necessary.
                 );
 
 
-            // ----------------------------------
+            // --------------------------------------
             // Invalid tool call
-            // ----------------------------------
+            // --------------------------------------
 
             if (!normalized) {
 
@@ -550,12 +782,10 @@ with the same arguments unless necessary.
                 "\nTool requested:"
             );
 
-
             console.log(
                 "Name:",
                 functionName
             );
-
 
             console.log(
                 "Arguments:",
@@ -563,9 +793,9 @@ with the same arguments unless necessary.
             );
 
 
-            // ----------------------------------
-            // Execute
-            // ----------------------------------
+            // --------------------------------------
+            // Execute tool
+            // --------------------------------------
 
             const result =
                 await executeTool(
@@ -580,18 +810,18 @@ with the same arguments unless necessary.
             );
 
 
-            // ----------------------------------
+            // --------------------------------------
             // Track tool
-            // ----------------------------------
+            // --------------------------------------
 
             toolsUsed.push(
                 functionName
             );
 
 
-            // ----------------------------------
+            // --------------------------------------
             // Store result
-            // ----------------------------------
+            // --------------------------------------
 
             toolResults.push({
 
@@ -606,9 +836,9 @@ with the same arguments unless necessary.
         }
 
 
-        // --------------------------------------
+        // ------------------------------------------
         // Safety check
-        // --------------------------------------
+        // ------------------------------------------
 
         if (
             toolResults.length === 0
@@ -621,16 +851,9 @@ with the same arguments unless necessary.
         }
 
 
-        // --------------------------------------
+        // ------------------------------------------
         // Add tool results
-        // --------------------------------------
-
-        /*
-         * This is the common representation.
-         *
-         * Your provider service can convert
-         * this to Gemini/Ollama format.
-         */
+        // ------------------------------------------
 
         contents.push({
 
@@ -660,7 +883,7 @@ with the same arguments unless necessary.
 
 
     // ==================================================
-    // Maximum iterations reached
+    // Maximum iterations
     // ==================================================
 
     throw new Error(
@@ -672,6 +895,10 @@ with the same arguments unless necessary.
 
 }
 
+
+// ==================================================
+// Export
+// ==================================================
 
 module.exports = {
 

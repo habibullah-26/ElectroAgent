@@ -1,0 +1,40 @@
+<aside class="sidebar">
+  <div class="brand">
+    <span class="logo">
+      <svg class="ic" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    </span>
+    <span class="brand-name">Elector AI Assistant</span>
+  </div>
+
+  <button class="new-chat" (click)="newChat()">
+    <svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> New chat
+  </button>
+
+  <div class="section-title">Recent chats</div>
+
+  <nav class="history">
+    <div
+      class="history-item"
+      *ngFor="let c of store.conversations"
+      [class.active]="c.id === store.activeId"
+      (click)="select(c.id)">
+      <span class="title">{{ c.title }}</span>
+      <button class="del" title="Delete chat" (click)="delete(c.id, $event)">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="empty" *ngIf="!store.conversations.length">No conversations yet</div>
+  </nav>
+
+  <div class="footer">
+    <button class="footer-btn" (click)="openSettings.emit()">
+      <svg class="ic" viewBox="0 0 24 24"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></svg> Settings
+    </button>
+    <button
+      class="footer-btn danger"
+      (click)="clearAll()"
+      [disabled]="!store.conversations.length">
+      <svg class="ic" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg> Clear history
+    </button>
+  </div>
+</aside>

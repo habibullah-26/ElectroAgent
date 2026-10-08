@@ -1,0 +1,35 @@
+<div class="messages" #scrollArea>
+  <div class="welcome" *ngIf="!store.active">
+    <div class="logo">
+      <svg class="ic" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    </div>
+    <h1>Elector AI Assistant</h1>
+    <p>Ask about products, specifications, stock, pricing or electrical advice.</p>
+  </div>
+
+  <div
+    class="msg"
+    *ngFor="let m of store.active?.messages"
+    [class.user]="m.role === 'user'">
+    <div class="avatar">
+      <span *ngIf="m.role === 'user'; else bot">U</span>
+      <ng-template #bot>
+        <svg class="ic" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </ng-template>
+    </div>
+    <div class="bubble" [class.error]="m.error">
+      <markdown *ngIf="m.role === 'assistant'; else plain" [data]="m.content"></markdown>
+      <ng-template #plain>{{ m.content }}</ng-template>
+    </div>
+  </div>
+
+  <div class="msg" *ngIf="store.loading">
+    <div class="avatar">
+      <svg class="ic" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    </div>
+    <div class="bubble typing">
+      <span class="status">{{ statuses[statusIndex] }}</span>
+      <span class="dots"><i></i><i></i><i></i></span>
+    </div>
+  </div>
+</div>

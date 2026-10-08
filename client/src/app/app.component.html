@@ -1,82 +1,21 @@
-<div class="container">
+<div class="layout">
+  <app-sidebar
+    *ngIf="sidebarOpen"
+    (chatSelected)="chatWindow?.scrollToBottom()"
+    (openSettings)="settingsOpen = true">
+  </app-sidebar>
 
-  <div class="card">
-
-    <h1>🤖 AI Assistant</h1>
-
-    <p class="subtitle">
-      Angular + Node.js + OpenAI
-    </p>
-
-    <div class="form-group">
-
-      <label>
-        Ask your question
-      </label>
-
-      <textarea
-        [(ngModel)]="message"
-        placeholder="For example: Explain dependency injection in Spring Boot..."
-        rows="6">
-      </textarea>
-
-    </div>
-
-    <div class="buttons">
-
-      <button
-        class="ask-button"
-        (click)="askAI()"
-        [disabled]="loading || !message.trim()">
-
-        <span *ngIf="!loading">
-          Ask AI
-        </span>
-
-        <span *ngIf="loading">
-          Thinking...
-        </span>
-
+  <main class="main">
+    <header class="topbar">
+      <button class="toggle" (click)="sidebarOpen = !sidebarOpen" title="Toggle sidebar">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
+      <span>Elector AI Assistant</span>
+    </header>
 
-      <button
-        class="clear-button"
-        (click)="clear()">
+    <app-chat-window></app-chat-window>
+    <app-chat-input [disabled]="store.busy" (send)="send($event)"></app-chat-input>
+  </main>
 
-        Clear
-
-      </button>
-
-    </div>
-
-    <div
-      class="loading"
-      *ngIf="loading">
-
-      AI is generating a response...
-
-    </div>
-
-    <div
-      class="error"
-      *ngIf="error">
-
-      {{ error }}
-
-    </div>
-
-    <div
-      class="answer"
-      *ngIf="answer">
-
-      <h2>AI Response</h2>
-
-      <div class="ai-response">
-        <markdown [data]="answer"></markdown>
-      </div>
-
-    </div>
-
-  </div>
-
+  <app-settings *ngIf="settingsOpen" (close)="settingsOpen = false"></app-settings>
 </div>

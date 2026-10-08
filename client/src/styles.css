@@ -1,1 +1,54 @@
-/* You can add global styles to this file, and also import other style files */
+:root,
+:root[data-theme='light'] {
+  --bg: #ffffff;
+  --bg-sidebar: #f7f7f8;
+  --bg-hover: #ececf1;
+  --bg-bubble: #f0f0f3;
+  --bg-input: #f4f4f6;
+  --bg-code: #f6f8fa;
+  --border: #e2e2e8;
+  --text: #1f2328;
+  --text-muted: #6b7280;
+  --accent: #2563eb;
+  --accent-text: #ffffff;
+  --danger: #dc2626;
+  --user-avatar: #3b82f6;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+:root[data-theme='dark'] {
+  --bg: #212121;
+  --bg-sidebar: #171717;
+  --bg-hover: #2a2a2a;
+  --bg-bubble: #2f2f2f;
+  --bg-input: #2f2f2f;
+  --bg-code: #0d0d0d;
+  --border: #3a3a3a;
+  --text: #ececec;
+  --text-muted: #9a9a9a;
+  --accent: #3b82f6;
+  --accent-text: #ffffff;
+  --danger: #ff6b6b;
+  --user-avatar: #5b5bd6;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+}
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+button { font-family: inherit; }
+
+svg.ic {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

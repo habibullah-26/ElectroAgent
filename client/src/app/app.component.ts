@@ -1,87 +1,35 @@
-import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
-import { AiService, ChatResponse } from './services/ai.service';
+import { Component, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { MarkdownComponent } from 'ngx-markdown';
+import { SidebarComponent } from './components/sidebar/sidebar.component';
+import { ChatWindowComponent } from './components/chat-window/chat-window.component';
+import { ChatInputComponent } from './components/chat-input/chat-input.component';
+import { SettingsComponent } from './components/settings/settings.component';
+import { ChatStoreService } from './services/chat-store.service';
+import { ThemeService } from './services/theme.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet,CommonModule,FormsModule,MarkdownComponent],
+  imports: [
+    CommonModule,
+    SidebarComponent,
+    ChatWindowComponent,
+    ChatInputComponent,
+    SettingsComponent
+  ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
 export class AppComponent {
-  title = 'AI Chat Assistant';
+  @ViewChild(ChatWindowComponent) chatWindow?: ChatWindowComponent;
 
-  message = '';
+  sidebarOpen = true;
+  settingsOpen = false;
 
-  answer = '';
+  // ThemeService is injected so the saved theme is applied at startup.
+  constructor(public store: ChatStoreService, private theme: ThemeService) {}
 
-  loading = false;
-
-  error = '';
-
-  constructor(
-    private aiService: AiService
-  ) {}
-
-  askAI(): void {
-
-    if (!this.message.trim()) {
-      return;
-    }
-
-    this.loading = true;
-
-    this.answer = '';
-
-    this.error = '';
-
-    this.aiService
-      .chat(this.message.trim())
-      .subscribe({
-
-        next: (response: ChatResponse) => {
-
-          this.loading = false;
-
-          if (response.success) {
-
-            this.answer = response.answer || '';
-
-          } else {
-
-            this.error =
-              response.message ||
-              'Something went wrong.';
-          }
-
-        },
-
-        error: (error) => {
-
-          console.error(error);
-
-          this.loading = false;
-
-          this.error =
-            'Unable to connect to AI server.';
-
-        }
-
-      });
-
-  }
-
-  clear(): void {
-
-    this.message = '';
-
-    this.answer = '';
-
-    this.error = '';
-
+  send(text: string): void {
+    this.store.send(text, () => this.chatWindow?.scrollToBottom());
   }
 }

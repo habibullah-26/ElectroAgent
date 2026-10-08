@@ -1,47 +1,169 @@
 const express = require("express");
 const cors = require("cors");
+
 require("dotenv").config();
+
 
 const {
     runAgent
 } = require("./agents/agenticService");
 
 
+const {
+    initializeKnowledge,
+    searchKnowledge
+} = require("./services/ragService");
+
+
 const app = express();
 
 
-// ------------------------------------
+// ==================================================
 // Middleware
-// ------------------------------------
+// ==================================================
 
-app.use(cors());
+app.use(
+    cors()
+);
 
-app.use(express.json());
-
-
-// ------------------------------------
-// Health check
-// ------------------------------------
-
-app.get("/api/health", (req, res) => {
-
-    res.json({
-
-        success: true,
-
-        message: "Server is running",
-
-        provider:
-            process.env.AI_PROVIDER || "gemini"
-
-    });
-
-});
+app.use(
+    express.json()
+);
 
 
-// ------------------------------------
+// ==================================================
+// Health Check
+// ==================================================
+
+app.get(
+    "/api/health",
+    (req, res) => {
+
+        res.json({
+
+            success: true,
+
+            message:
+                "Server is running",
+
+            provider:
+                process.env.AI_PROVIDER ||
+                "gemini"
+
+        });
+
+    }
+);
+
+
+// ==================================================
+// RAG Search
+// ==================================================
+
+app.get(
+    "/api/rag/search",
+    async (req, res) => {
+
+        try {
+
+            const query =
+                req.query.q;
+
+
+            console.log(
+                "\nRAG Search Query:",
+                query
+            );
+
+
+            // ------------------------------------------
+            // Validate query
+            // ------------------------------------------
+
+            if (
+                !query ||
+                typeof query !== "string"
+            ) {
+
+                return res.status(400).json({
+
+                    success: false,
+
+                    message:
+                        "Please provide a search query."
+
+                });
+
+            }
+
+
+            // ------------------------------------------
+            // Search knowledge
+            // ------------------------------------------
+
+            const results =
+                await searchKnowledge(
+                    query,
+                    3
+                );
+
+
+            console.log(
+                "RAG Search Results:",
+                results
+            );
+
+
+            // ------------------------------------------
+            // Response
+            // ------------------------------------------
+
+            return res.json({
+
+                success: true,
+
+                query:
+
+                    query,
+
+                results:
+
+                    results
+
+            });
+
+        } catch (error) {
+
+            console.error(
+                "\nRAG Search Error:"
+            );
+
+            console.error(
+                error
+            );
+
+
+            return res.status(500).json({
+
+                success: false,
+
+                message:
+                    "RAG search failed.",
+
+                error:
+                    error.message
+
+            });
+
+        }
+
+    }
+);
+
+
+// ==================================================
 // AI Chat
-// ------------------------------------
+// ==================================================
 
 app.post(
     "/api/chat",
@@ -54,9 +176,9 @@ app.post(
             } = req.body;
 
 
-            // -----------------------------
+            // ------------------------------------------
             // Validate request
-            // -----------------------------
+            // ------------------------------------------
 
             if (
                 !message ||
@@ -74,9 +196,11 @@ app.post(
                 });
 
             }
-            // -----------------------------
+
+
+            // ------------------------------------------
             // Run AI Agent
-            // -----------------------------
+            // ------------------------------------------
 
             const result =
                 await runAgent(
@@ -84,9 +208,9 @@ app.post(
                 );
 
 
-            // -----------------------------
-            // Send response
-            // -----------------------------
+            // ------------------------------------------
+            // Response
+            // ------------------------------------------
 
             return res.json({
 
@@ -105,7 +229,6 @@ app.post(
                     result.model
 
             });
-
 
         } catch (error) {
 
@@ -136,9 +259,9 @@ app.post(
 );
 
 
-// ------------------------------------
-// 404
-// ------------------------------------
+// ==================================================
+// 404 Handler
+// ==================================================
 
 app.use(
     (req, res) => {
@@ -156,12 +279,17 @@ app.use(
 );
 
 
-// ------------------------------------
-// Error handler
-// ------------------------------------
+// ==================================================
+// Error Handler
+// ==================================================
 
 app.use(
-    (error, req, res, next) => {
+    (
+        error,
+        req,
+        res,
+        next
+    ) => {
 
         console.error(
             "Server Error:",
@@ -182,9 +310,9 @@ app.use(
 );
 
 
-// ------------------------------------
-// Start server
-// ------------------------------------
+// ==================================================
+// Start Server
+// ==================================================
 
 const PORT =
     process.env.PORT || 3000;
@@ -192,25 +320,51 @@ const PORT =
 
 app.listen(
     PORT,
-    () => {
+    async () => {
 
         console.log(
-            "\n================================"
+            "\n================================="
         );
 
         console.log(
-            `Server running on http://localhost:${PORT}`
+            "ElectroAgent Server"
+        );
+
+        console.log(
+            `http://localhost:${PORT}`
         );
 
         console.log(
             `AI Provider: ${
-                process.env.AI_PROVIDER || "gemini"
+                process.env.AI_PROVIDER ||
+                "gemini"
             }`
         );
 
         console.log(
-            "================================\n"
+            "================================="
         );
+
+
+        // ------------------------------------------
+        // Initialize RAG
+        // ------------------------------------------
+
+        try {
+
+            await initializeKnowledge();
+
+        } catch (error) {
+
+            console.error(
+                "\nRAG initialization failed:"
+            );
+
+            console.error(
+                error
+            );
+
+        }
 
     }
 );

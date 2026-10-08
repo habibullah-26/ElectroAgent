@@ -304,6 +304,22 @@ const toolDefinitions = [
             ]
 
         }
+    },
+
+    {
+        name: "searchKnowledge",
+        description:
+            "Search the ElectroAgent knowledge base for store policies, warranties, returns, refunds, shipping, delivery, support, customer support, and other general store information.",
+        parameters: {
+            type: "object",
+            properties: {
+            query: {
+                type: "string",
+                description: "The question or information to search for in the knowledge base."
+            }
+            },
+            required: ["query"]
+        }
     }
 
 ];
