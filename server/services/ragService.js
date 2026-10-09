@@ -197,16 +197,60 @@ async function initializeKnowledge() {
 // Search Knowledge
 // ==================================================
 
+// async function searchKnowledge(
+//     query,
+//     topK = 3
+// ) {
+
+//     const queryEmbedding =
+//         await createQueryEmbedding(
+//             query
+//         );
+
+
+//     const results =
+//         await searchDocuments(
+//             queryEmbedding,
+//             topK
+//         );
+
+
+//     return results.map(
+//         result => ({
+
+//             id:
+//                 result.id,
+
+//             text:
+//                 result.text,
+
+//             score:
+//                 1 -
+//                 (result.distance || 0)
+
+//         })
+//     );
+
+// }
+
 async function searchKnowledge(
     query,
     topK = 3
 ) {
+    if (
+        !query ||
+        typeof query !== "string" ||
+        !query.trim()
+    ) {
+        throw new Error(
+            "A valid search query is required."
+        );
+    }
 
     const queryEmbedding =
         await createQueryEmbedding(
-            query
+            query.trim()
         );
-
 
     const results =
         await searchDocuments(
@@ -214,23 +258,15 @@ async function searchKnowledge(
             topK
         );
 
-
-    return results.map(
-        result => ({
-
-            id:
-                result.id,
-
-            text:
-                result.text,
-
-            score:
-                1 -
-                (result.distance || 0)
-
-        })
-    );
-
+    return results
+        .filter(result =>
+            typeof result.distance === "number"
+        )
+        .map(result => ({
+            id: result.id,
+            text: result.text,
+            distance: result.distance
+        }));
 }
 
 
