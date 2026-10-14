@@ -20,7 +20,8 @@ export interface ChatResponse {
 })
 export class AiService {
 
-  private apiUrl = 'http://localhost:3000/api/chat';
+  private apiUrl  = 'https://electroagent-1vdln7tj.b4a.run/api/chat'
+  // private apiUrl = 'http://localhost:3000/api/chat';
 
   constructor(
     private http: HttpClient
