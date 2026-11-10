@@ -446,7 +446,8 @@ async function getKnowledgeContext(
 // ==================================================
 
 async function runAgent(
-    message
+    message,
+    history = []
 ) {
 
     // ==================================================
@@ -487,26 +488,28 @@ async function runAgent(
     // Initial conversation
     // ==================================================
 
-    let contents = [
+    // Restore recent persisted conversation turns before the new message.
+    // The database uses "assistant"; Gemini conversation contents use "model".
+    const recentHistory = Array.isArray(history)
+        ? history.slice(-20)
+        : [];
 
-        {
+    let contents = recentHistory
+        .filter(item =>
+            (item.role === "user" || item.role === "assistant") &&
+            typeof item.content === "string" &&
+            item.content.trim().length > 0
+        )
+        .map(item => ({
+            role: item.role === "assistant" ? "model" : "user",
+            parts: [{ text: item.content }]
+        }));
 
-            role: "user",
-
-            parts: [
-
-                {
-
-                    text:
-                        message
-
-                }
-
-            ]
-
-        }
-
-    ];
+    // Add the current user turn exactly once.
+    contents.push({
+        role: "user",
+        parts: [{ text: message }]
+    });
 
 
     // ==================================================
