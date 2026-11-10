@@ -44,9 +44,13 @@ export class ChatStoreService {
     this.historyLoading = true;
     this.aiService.getConversations().subscribe({
       next: response => {
-        this.conversations = (response.conversations || []).map(item =>
-          this.mapConversation(item)
-        );
+        this.conversations = (response.conversations || []).map(item => {
+          const existing = this.conversations.find(conversation => conversation.id === item.id);
+          const loaded = this.mapConversation(item);
+          // The list endpoint contains metadata only; retain messages already in memory.
+          loaded.messages = existing?.messages || [];
+          return loaded;
+        });
         this.historyLoading = false;
       },
       error: error => {
