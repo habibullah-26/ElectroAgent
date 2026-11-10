@@ -7,6 +7,7 @@ const { runAgent } = require("./agents/agenticService");
 const { requestLogger, logger } = require("./middleware/requestLogger");
 const validateChat = require("./middleware/validateChat");
 const conversationRoutes = require("./routes/conversationRoutes");
+const conversationRepository = require("./database/conversationRepository");
 
 const app = express();
 
@@ -50,9 +51,53 @@ app.post("/api/chat", validateChat, async (req, res) => {
 
     try {
         const message = req.body.message.trim();
+        const { conversationId } = req.body;
 
-        // Keep the existing agent and provider architecture.
-        const result = await runAgent(message);
+        let conversationHistory = [];
+
+        // Conversation persistence is opt-in until the Angular client is
+        // migrated in the next step. Requests without an ID keep old behavior.
+        if (conversationId !== undefined) {
+            if (
+                typeof conversationId !== "string" ||
+                conversationId.trim().length === 0
+            ) {
+                return res.status(400).json({
+                    success: false,
+                    error: {
+                        code: "INVALID_CONVERSATION_ID",
+                        message: "conversationId must be a non-empty string."
+                    },
+                    requestId: req.id
+                });
+            }
+
+            const conversation = conversationRepository.getConversationById(
+                conversationId
+            );
+
+            if (!conversation) {
+                return res.status(404).json({
+                    success: false,
+                    error: {
+                        code: "CONVERSATION_NOT_FOUND",
+                        message: "The requested conversation was not found."
+                    },
+                    requestId: req.id
+                });
+            }
+
+            // Read previous turns before inserting the current user message.
+            conversationHistory = conversation.messages;
+            conversationRepository.addMessage(
+                conversationId,
+                "user",
+                message
+            );
+        }
+
+        // Pass prior turns to the existing provider-neutral agent.
+        const result = await runAgent(message, conversationHistory);
 
         // Guard against unexpected agent output.
         if (!result || typeof result.answer !== "string") {
@@ -69,6 +114,15 @@ app.post("/api/chat", validateChat, async (req, res) => {
                 },
                 requestId: req.id
             });
+        }
+
+        // Persist the assistant response only after the agent succeeds.
+        if (conversationId) {
+            conversationRepository.addMessage(
+                conversationId,
+                "assistant",
+                result.answer
+            );
         }
 
         logger.info({
