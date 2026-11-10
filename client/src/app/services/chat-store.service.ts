@@ -1,5 +1,11 @@
 import { Injectable } from '@angular/core';
-import { AiService, ChatResponse } from './ai.service';
+import { forkJoin } from 'rxjs';
+import {
+  AiService,
+  ApiConversation,
+  ApiMessage,
+  ChatResponse
+} from './ai.service';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -14,28 +20,40 @@ export interface Conversation {
   messages: ChatMessage[];
 }
 
-const STORAGE_KEY = 'ai-chat-history';
-
 @Injectable({ providedIn: 'root' })
 export class ChatStoreService {
   conversations: Conversation[] = [];
   activeId: string | null = null;
   loading = false;
   typing = false;
+  historyLoading = false;
 
   get busy(): boolean {
     return this.loading || this.typing;
   }
+
   constructor(private aiService: AiService) {
-    try {
-      this.conversations = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    } catch {
-      this.conversations = [];
-    }
+    this.loadConversations();
   }
 
   get active(): Conversation | undefined {
     return this.conversations.find(c => c.id === this.activeId);
+  }
+
+  loadConversations(): void {
+    this.historyLoading = true;
+    this.aiService.getConversations().subscribe({
+      next: response => {
+        this.conversations = (response.conversations || []).map(item =>
+          this.mapConversation(item)
+        );
+        this.historyLoading = false;
+      },
+      error: error => {
+        console.error('Unable to load conversations from the server.', error);
+        this.historyLoading = false;
+      }
+    });
   }
 
   newChat(): void {
@@ -44,20 +62,59 @@ export class ChatStoreService {
 
   select(id: string): void {
     this.activeId = id;
+
+    // Load the complete message history when a conversation is selected.
+    this.aiService.getConversation(id).subscribe({
+      next: response => {
+        if (this.activeId !== id) {
+          return;
+        }
+
+        const loaded = this.mapConversation(response.conversation);
+        const index = this.conversations.findIndex(item => item.id === id);
+        if (index >= 0) {
+          this.conversations[index] = loaded;
+        } else {
+          this.conversations.unshift(loaded);
+        }
+      },
+      error: error => {
+        console.error('Unable to load this conversation.', error);
+      }
+    });
   }
 
   delete(id: string): void {
-    this.conversations = this.conversations.filter(c => c.id !== id);
-    if (this.activeId === id) {
-      this.activeId = null;
-    }
-    this.save();
+    this.aiService.deleteConversation(id).subscribe({
+      next: () => {
+        this.conversations = this.conversations.filter(c => c.id !== id);
+        if (this.activeId === id) {
+          this.activeId = null;
+        }
+      },
+      error: error => {
+        console.error('Unable to delete conversation.', error);
+      }
+    });
   }
 
   clearAll(): void {
-    this.conversations = [];
-    this.activeId = null;
-    this.save();
+    if (!this.conversations.length) {
+      this.activeId = null;
+      return;
+    }
+
+    const ids = this.conversations.map(conversation => conversation.id);
+    forkJoin(ids.map(id => this.aiService.deleteConversation(id))).subscribe({
+      next: () => {
+        this.conversations = [];
+        this.activeId = null;
+      },
+      error: error => {
+        console.error('Unable to clear conversation history.', error);
+        this.loadConversations();
+      }
+    });
   }
 
   /** Calls onUpdate after every change so the UI can scroll. */
@@ -67,43 +124,64 @@ export class ChatStoreService {
       return;
     }
 
-    let convo = this.active;
-    if (!convo) {
-      convo = {
-        id: Date.now().toString(),
-        title: text.length > 40 ? text.substring(0, 40) + '...' : text,
-        createdAt: Date.now(),
-        messages: []
-      };
-      this.conversations.unshift(convo);
-      this.activeId = convo.id;
+    this.loading = true;
+    const existingConversation = this.active;
+
+    if (existingConversation) {
+      this.sendToConversation(existingConversation, text, onUpdate);
+      return;
     }
 
-    const target = convo;
+    // A conversation is created on the server only when the first message is sent.
+    const title = text.length > 40 ? text.substring(0, 40) + '...' : text;
+    this.aiService.createConversation(title).subscribe({
+      next: response => {
+        const conversation = this.mapConversation(response.conversation);
+        this.conversations.unshift(conversation);
+        this.activeId = conversation.id;
+        this.sendToConversation(conversation, text, onUpdate);
+      },
+      error: error => {
+        console.error('Unable to create conversation.', error);
+        this.loading = false;
+        onUpdate();
+      }
+    });
+  }
+
+  private sendToConversation(
+    target: Conversation,
+    text: string,
+    onUpdate: () => void
+  ): void {
     target.messages.push({ role: 'user', content: text });
     this.loading = true;
-    this.save();
     onUpdate();
 
-    const reply = (content: string, error = false) => {
-      this.loading = false;
-      if (error) {
-        target.messages.push({ role: 'assistant', content, error });
-        this.save();
+    this.aiService.chat(text, target.id).subscribe({
+      next: (response: ChatResponse) => {
+        this.loading = false;
+        if (response.success && response.answer) {
+          this.typeOut(target, response.answer, onUpdate);
+          this.loadConversations();
+        } else {
+          target.messages.push({
+            role: 'assistant',
+            content: response.message || response.error || 'Something went wrong.',
+            error: true
+          });
+          onUpdate();
+        }
+      },
+      error: error => {
+        console.error(error);
+        this.loading = false;
+        target.messages.push({
+          role: 'assistant',
+          content: 'Unable to connect to AI server. Please try again.',
+          error: true
+        });
         onUpdate();
-        return;
-      }
-      this.typeOut(target, content, onUpdate);
-    };
-
-    this.aiService.chat(text).subscribe({
-      next: (res: ChatResponse) =>
-        res.success
-          ? reply(res.answer || '')
-          : reply(res.message || 'Something went wrong.', true),
-      error: (err) => {
-        console.error(err);
-        reply('Unable to connect to AI server.', true);
       }
     });
   }
@@ -118,15 +196,28 @@ export class ChatStoreService {
     const timer = setInterval(() => {
       message.content = full.substring(0, message.content.length + step);
       onUpdate();
+
       if (message.content.length >= full.length) {
         clearInterval(timer);
         this.typing = false;
-        this.save();
+        this.loadConversations();
       }
     }, 20);
   }
 
-  private save(): void {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.conversations));
+  private mapConversation(item: ApiConversation): Conversation {
+    return {
+      id: item.id,
+      title: item.title,
+      createdAt: Date.parse(item.created_at) || Date.now(),
+      messages: (item.messages || []).map(message => this.mapMessage(message))
+    };
+  }
+
+  private mapMessage(message: ApiMessage): ChatMessage {
+    return {
+      role: message.role,
+      content: message.content
+    };
   }
 }
