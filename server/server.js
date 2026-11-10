@@ -6,6 +6,7 @@ require("dotenv").config();
 const { runAgent } = require("./agents/agenticService");
 const { requestLogger, logger } = require("./middleware/requestLogger");
 const validateChat = require("./middleware/validateChat");
+const conversationRoutes = require("./routes/conversationRoutes");
 
 const app = express();
 
@@ -20,6 +21,12 @@ app.use(requestLogger);
 app.use(cors());
 
 app.use(express.json({ limit: "32kb" }));
+
+// ------------------------------------
+// Conversation persistence API
+// ------------------------------------
+
+app.use("/api/conversations", conversationRoutes);
 
 // ------------------------------------
 // Health check
